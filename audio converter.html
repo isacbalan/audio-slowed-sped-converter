@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Effects Converter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .file-input-button {
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            background-color: #4f46e5;
+            color: white;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        .file-input-button:hover {
+            background-color: #4338ca;
+        }
+        .effect-button {
+            transition: all 0.2s ease-in-out;
+            transform-style: preserve-3d;
+        }
+        .effect-button:active {
+            transform: scale(0.95);
+        }
+        .effect-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: scale(1);
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4f46e5;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Custom styles for the range slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+
+        input[type=range]:focus {
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #4f46e5;
+            cursor: pointer;
+            margin-top: -7px;
+        }
+
+        input[type=range]::-moz-range-thumb {
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #4f46e5;
+            cursor: pointer;
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #374151; /* bg-gray-700 */
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-md mx-auto bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-8 space-y-6">
+        
+        <div class="text-center">
+            <h1 class="text-3xl font-bold text-indigo-400">Live Audio Effects</h1>
+            <p class="text-gray-400 mt-2">Adjust effects in real-time</p>
+        </div>
+
+        <div id="message-box" class="hidden bg-red-500 text-white text-center p-3 rounded-lg">
+            <p id="message-text"></p>
+        </div>
+
+        <div id="upload-section">
+            <label for="audio-file" class="file-input-button w-full">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                <span>Select Audio File</span>
+            </label>
+            <input type="file" id="audio-file" class="hidden" accept="audio/*">
+            <p id="file-name" class="text-center text-sm text-gray-500 mt-3 truncate"></p>
+        </div>
+
+        <div id="controls-section" class="pt-4 space-y-6 hidden">
+            <!-- Speed Slider -->
+            <div class="space-y-2">
+                <div class="flex justify-between items-center">
+                    <label for="speed-slider" class="font-medium text-gray-300">Speed</label>
+                    <span id="speed-value" class="text-indigo-400 font-semibold bg-gray-700 px-2 py-1 rounded-md">1.00x</span>
+                </div>
+                <input type="range" id="speed-slider" min="0.5" max="2.0" value="1.0" step="0.05" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+            </div>
+            
+            <!-- Pitch Slider -->
+            <div class="space-y-2">
+                <div class="flex justify-between items-center">
+                    <label for="pitch-slider" class="font-medium text-gray-300">Pitch</label>
+                    <span id="pitch-value" class="text-indigo-400 font-semibold bg-gray-700 px-2 py-1 rounded-md">+0.00</span>
+                </div>
+                <input type="range" id="pitch-slider" min="-1200" max="1200" value="0" step="10" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+            </div>
+        
+            <div class="flex justify-around items-center pt-2">
+                <div class="flex items-center space-x-3">
+                    <input type="checkbox" id="reverb-toggle" class="h-5 w-5 rounded bg-gray-700 border-gray-600 text-indigo-500 focus:ring-2 focus:ring-indigo-600 cursor-pointer">
+                    <label for="reverb-toggle" class="text-gray-300 cursor-pointer select-none">Reverb</label>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <input type="checkbox" id="bass-boost-toggle" class="h-5 w-5 rounded bg-gray-700 border-gray-600 text-indigo-500 focus:ring-2 focus:ring-indigo-600 cursor-pointer">
+                    <label for="bass-boost-toggle" class="text-gray-300 cursor-pointer select-none">Bass Boost</label>
+                </div>
+            </div>
+        
+            <div class="flex space-x-4">
+                <button id="play-pause-btn" class="effect-button w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-semibold text-lg flex items-center justify-center">Play</button>
+                <button id="render-btn" class="effect-button w-full bg-green-600 hover:bg-green-700 py-3 rounded-lg font-semibold text-lg flex items-center justify-center">Render & Download</button>
+            </div>
+
+            <!-- Playback Progress Bar -->
+            <div id="playback-progress-container" class="pt-2 space-y-2 hidden">
+                <div id="progress-bar-bg" class="w-full bg-gray-700 rounded-full h-2 cursor-pointer">
+                    <div id="progress-bar" class="bg-indigo-500 h-2 rounded-full" style="width: 0%;"></div>
+                </div>
+                <div class="flex justify-between text-xs text-gray-400">
+                    <span id="current-time">00:00</span>
+                    <span id="total-duration">00:00</span>
+                </div>
+            </div>
+        </div>
+        
+        <div id="result-section" class="hidden pt-4 space-y-4">
+            <div id="loader-container" class="flex flex-col items-center justify-center space-y-3 hidden">
+                <div class="loader"></div>
+                <p id="status-text" class="text-gray-400">Processing, please wait...</p>
+            </div>
+            
+            <div id="player-container" class="hidden">
+                 <audio controls id="audio-player" class="w-full rounded-lg"></audio>
+                 <a id="download-link" href="#" download="converted-song.wav" class="mt-4 file-input-button w-full bg-indigo-600 hover:bg-indigo-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    Download Rendered File
+                </a>
+            </div>
+        </div>
+
+        <!-- Donation Section -->
+        <div class="pt-6 border-t border-gray-700">
+            <h2 class="text-lg font-semibold text-center text-gray-300">Enjoying the App?</h2>
+            <p class="text-center text-sm text-gray-400 mt-2">Your support helps keep this tool running and ad-free. Consider a small donation!</p>
+            <div class="mt-4 flex flex-col items-center">
+                <!-- 
+                    IMPORTANT: Replace 'example@okaxis' below with your actual UPI ID.
+                    This link will attempt to open a UPI payment app on mobile.
+                -->
+                <a href="upi://pay?pa=example@okaxis&pn=Developer&cu=INR&tn=Donation%20for%20Audio%20App" class="w-full flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+                    <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    Donate Us
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('audio-file');
+        const fileNameDisplay = document.getElementById('file-name');
+        const controlsSection = document.getElementById('controls-section');
+        const speedSlider = document.getElementById('speed-slider');
+        const speedValue = document.getElementById('speed-value');
+        const pitchSlider = document.getElementById('pitch-slider');
+        const pitchValue = document.getElementById('pitch-value');
+        const reverbToggle = document.getElementById('reverb-toggle');
+        const bassBoostToggle = document.getElementById('bass-boost-toggle');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const renderBtn = document.getElementById('render-btn');
+        const resultSection = document.getElementById('result-section');
+        const loaderContainer = document.getElementById('loader-container');
+        const statusText = document.getElementById('status-text');
+        const playerContainer = document.getElementById('player-container');
+        const audioPlayer = document.getElementById('audio-player');
+        const downloadLink = document.getElementById('download-link');
+        const messageBox = document.getElementById('message-box');
+        const messageText = document.getElementById('message-text');
+
+        const playbackProgressContainer = document.getElementById('playback-progress-container');
+        const progressBarBg = document.getElementById('progress-bar-bg');
+        const progressBar = document.getElementById('progress-bar');
+        const currentTimeDisplay = document.getElementById('current-time');
+        const totalDurationDisplay = document.getElementById('total-duration');
+
+        let audioFile = null;
+        let audioContext, sourceNode, bassFilterNode, reverbConvolverNode, reverbWetGainNode, reverbDryGainNode, mainGainNode;
+        let originalBuffer = null;
+        let reverbBuffer = null;
+        let isPlaying = false;
+        let startTime = 0;
+        let pauseTime = 0;
+
+        window.AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioContext = new AudioContext();
+
+        fileInput.addEventListener('change', handleFileSelect);
+        speedSlider.addEventListener('input', updateSpeed);
+        pitchSlider.addEventListener('input', updatePitch);
+        reverbToggle.addEventListener('change', updateReverb);
+        bassBoostToggle.addEventListener('change', updateBassBoost);
+        playPauseBtn.addEventListener('click', togglePlayback);
+        renderBtn.addEventListener('click', renderAndDownload);
+        progressBarBg.addEventListener('click', seek);
+
+        function showMessage(message, isError = true) {
+            messageText.textContent = message;
+            messageBox.className = `text-white text-center p-3 rounded-lg ${isError ? 'bg-red-500' : 'bg-blue-500'}`;
+            messageBox.classList.remove('hidden');
+            setTimeout(() => { messageBox.classList.add('hidden'); }, 4000);
+        }
+
+        async function handleFileSelect(event) {
+            if (event.target.files.length === 0) return;
+            stopPlayback();
+
+            progressBar.style.width = '0%';
+            currentTimeDisplay.textContent = '00:00';
+            
+            // Reset speed slider and duration on new file
+            speedSlider.value = 1.0;
+            
+            audioFile = event.target.files[0];
+            fileNameDisplay.textContent = audioFile.name;
+            setLoadingState(true, 'Decoding audio...');
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    originalBuffer = await audioContext.decodeAudioData(e.target.result);
+                    if (!reverbBuffer) {
+                        reverbBuffer = await createReverbImpulseResponse(audioContext);
+                    }
+                    // Initial update for speed and duration
+                    updateSpeed(); 
+                    
+                    controlsSection.classList.remove('hidden');
+                    playbackProgressContainer.classList.remove('hidden');
+                    setLoadingState(false);
+                } catch (err) {
+                    showMessage('Error decoding audio file.');
+                    setLoadingState(false);
+                }
+            };
+            reader.readAsArrayBuffer(audioFile);
+        }
+
+        function setupAudioGraph() {
+            if (!originalBuffer) return;
+            sourceNode = audioContext.createBufferSource();
+            sourceNode.buffer = originalBuffer;
+
+            bassFilterNode = audioContext.createBiquadFilter();
+            bassFilterNode.type = 'lowshelf';
+            bassFilterNode.frequency.value = 250;
+            
+            reverbConvolverNode = audioContext.createConvolver();
+            reverbConvolverNode.buffer = reverbBuffer;
+            
+            reverbWetGainNode = audioContext.createGain();
+            reverbDryGainNode = audioContext.createGain();
+            
+            mainGainNode = audioContext.createGain();
+
+            sourceNode.connect(bassFilterNode);
+            bassFilterNode.connect(reverbDryGainNode);
+            reverbDryGainNode.connect(mainGainNode);
+            
+            bassFilterNode.connect(reverbConvolverNode);
+            reverbConvolverNode.connect(reverbWetGainNode);
+            reverbWetGainNode.connect(mainGainNode);
+
+            mainGainNode.connect(audioContext.destination);
+
+            updateSpeed();
+            updatePitch();
+            updateReverb();
+            updateBassBoost();
+            
+            sourceNode.onended = () => {
+                if (isPlaying) { 
+                    stopPlayback();
+                }
+            };
+        }
+
+        function updateSpeed() {
+            const rate = parseFloat(speedSlider.value);
+            speedValue.textContent = `${rate.toFixed(2)}x`;
+            if (sourceNode) {
+                sourceNode.playbackRate.value = rate;
+            }
+            // Update the total duration display based on the new speed
+            if (originalBuffer) {
+                const newDuration = originalBuffer.duration / rate;
+                totalDurationDisplay.textContent = formatTime(newDuration);
+            }
+        }
+
+        function updatePitch() {
+            const pitch = parseInt(pitchSlider.value);
+            const semitones = (pitch / 100).toFixed(2);
+            pitchValue.textContent = (semitones > 0 ? '+' : '') + semitones;
+            if (sourceNode) {
+                sourceNode.detune.value = pitch;
+            }
+        }
+
+        function updateReverb() {
+            const shouldUseReverb = reverbToggle.checked;
+            if (reverbDryGainNode && reverbWetGainNode) {
+                reverbDryGainNode.gain.value = shouldUseReverb ? 0.8 : 1.0;
+                reverbWetGainNode.gain.value = shouldUseReverb ? 0.4 : 0.0;
+            }
+        }
+
+        function updateBassBoost() {
+            const shouldUseBassBoost = bassBoostToggle.checked;
+            if (bassFilterNode) {
+                bassFilterNode.gain.value = shouldUseBassBoost ? 6 : 0;
+            }
+        }
+
+        function togglePlayback() {
+            if (isPlaying) {
+                stopPlayback(true);
+            } else {
+                startPlayback();
+            }
+        }
+
+        function startPlayback() {
+            if (!originalBuffer) return;
+            if (audioContext.state === 'suspended') {
+                 audioContext.resume();
+            }
+            setupAudioGraph();
+            startTime = audioContext.currentTime;
+            const playbackRate = parseFloat(speedSlider.value);
+            sourceNode.start(0, pauseTime % (originalBuffer.duration / playbackRate));
+            isPlaying = true;
+            playPauseBtn.textContent = 'Pause';
+            requestAnimationFrame(updateProgress);
+        }
+
+        function stopPlayback(isPause = false) {
+             if (!isPlaying) {
+                if (!isPause) {
+                    pauseTime = 0;
+                    progressBar.style.width = '0%';
+                    currentTimeDisplay.textContent = formatTime(0);
+                }
+                playPauseBtn.textContent = 'Play';
+                return;
+            }
+
+            if (sourceNode) {
+                sourceNode.onended = null;
+                sourceNode.stop();
+                sourceNode.disconnect();
+                sourceNode = null;
+            }
+
+            if (isPause) {
+                const playbackRate = parseFloat(speedSlider.value);
+                pauseTime += (audioContext.currentTime - startTime) * playbackRate;
+            } else {
+                pauseTime = 0;
+                progressBar.style.width = '0%';
+                currentTimeDisplay.textContent = formatTime(0);
+            }
+            
+            isPlaying = false;
+            playPauseBtn.textContent = 'Play';
+        }
+
+        async function renderAndDownload() {
+            if (!originalBuffer) {
+                showMessage('Please select a file first.');
+                return;
+            }
+            setLoadingState(true, 'Rendering effects...');
+            
+            const playbackRate = parseFloat(speedSlider.value);
+            const duration = originalBuffer.duration / playbackRate;
+            const offlineCtx = new OfflineAudioContext(originalBuffer.numberOfChannels, Math.ceil(originalBuffer.sampleRate * duration), originalBuffer.sampleRate);
+
+            const offlineSource = offlineCtx.createBufferSource();
+            offlineSource.buffer = originalBuffer;
+            offlineSource.playbackRate.value = playbackRate;
+            offlineSource.detune.value = parseInt(pitchSlider.value);
+
+            const offlineBass = offlineCtx.createBiquadFilter();
+            offlineBass.type = 'lowshelf';
+            offlineBass.frequency.value = 250;
+            offlineBass.gain.value = bassBoostToggle.checked ? 6 : 0;
+           
+            offlineSource.connect(offlineBass);
+            let lastNode = offlineBass;
+
+            if (reverbToggle.checked) {
+                const offlineReverb = offlineCtx.createConvolver();
+                offlineReverb.buffer = reverbBuffer;
+                const wetGain = offlineCtx.createGain();
+                wetGain.gain.value = 0.4;
+                const dryGain = offlineCtx.createGain();
+                dryGain.gain.value = 0.8;
+
+                lastNode.connect(dryGain);
+                dryGain.connect(offlineCtx.destination);
+                lastNode.connect(offlineReverb);
+                offlineReverb.connect(wetGain);
+                wetGain.connect(offlineCtx.destination);
+            } else {
+                lastNode.connect(offlineCtx.destination);
+            }
+
+            offlineSource.start(0);
+            try {
+                const renderedBuffer = await offlineCtx.startRendering();
+                const wavBlob = bufferToWave(renderedBuffer);
+                const url = URL.createObjectURL(wavBlob);
+                
+                audioPlayer.src = url;
+                downloadLink.href = url;
+                downloadLink.download = `rendered_${audioFile.name}.wav`;
+                
+                resultSection.classList.remove('hidden');
+                playerContainer.classList.remove('hidden');
+            } catch (err) {
+                 showMessage('Error rendering audio.');
+            } finally {
+                setLoadingState(false);
+            }
+        }
+        
+        function setLoadingState(isLoading, message = 'Processing...') {
+            playPauseBtn.disabled = isLoading;
+            renderBtn.disabled = isLoading;
+            fileInput.disabled = isLoading;
+            speedSlider.disabled = isLoading;
+            pitchSlider.disabled = isLoading;
+            reverbToggle.disabled = isLoading;
+            bassBoostToggle.disabled = isLoading;
+
+            if (isLoading) {
+                resultSection.classList.remove('hidden');
+                loaderContainer.classList.remove('hidden');
+                playerContainer.classList.add('hidden');
+                statusText.textContent = message;
+            } else {
+                loaderContainer.classList.add('hidden');
+            }
+        }
+        
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = Math.floor(seconds % 60);
+            return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+        }
+
+        function updateProgress() {
+            if (!isPlaying || !sourceNode || !originalBuffer) return;
+            
+            const playbackRate = parseFloat(speedSlider.value);
+            const scaledCurrentTime = pauseTime + ((audioContext.currentTime - startTime) * playbackRate);
+            const scaledTotalDuration = originalBuffer.duration;
+            
+            const cappedTime = Math.min(scaledCurrentTime, scaledTotalDuration);
+            const progressPercent = (cappedTime / scaledTotalDuration) * 100;
+
+            progressBar.style.width = `${progressPercent}%`;
+            currentTimeDisplay.textContent = formatTime(cappedTime);
+
+            requestAnimationFrame(updateProgress);
+        }
+
+
+        function seek(event) {
+            if (!originalBuffer) return;
+
+            const progressBarWidth = progressBarBg.clientWidth;
+            const clickPositionX = event.offsetX;
+            const seekRatio = clickPositionX / progressBarWidth;
+            const seekTime = originalBuffer.duration * seekRatio;
+
+            pauseTime = seekTime;
+
+            progressBar.style.width = `${seekRatio * 100}%`;
+            currentTimeDisplay.textContent = formatTime(seekTime);
+            
+            if (isPlaying) {
+                if (sourceNode) {
+                    sourceNode.onended = null;
+                    sourceNode.stop();
+                    sourceNode.disconnect();
+                    sourceNode = null;
+                }
+                isPlaying = false;
+                startPlayback();
+            }
+        }
+        
+        async function createReverbImpulseResponse(context) {
+            const duration = 2; const decay = 4;
+            const length = context.sampleRate * duration;
+            const impulse = context.createBuffer(2, length, context.sampleRate);
+            const left = impulse.getChannelData(0); const right = impulse.getChannelData(1);
+            for (let i = 0; i < length; i++) {
+                left[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay);
+                right[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay);
+            }
+            return impulse;
+        }
+        function bufferToWave(abuffer) {
+            let numOfChan = abuffer.numberOfChannels, length = abuffer.length * numOfChan * 2 + 44, buffer = new ArrayBuffer(length), view = new DataView(buffer), channels = [], i, sample, offset = 0, pos = 0;
+            setUint32(0x46464952); setUint32(length - 8); setUint32(0x45564157);
+            setUint32(0x20746d66); setUint32(16); setUint16(1); setUint16(numOfChan);
+            setUint32(abuffer.sampleRate); setUint32(abuffer.sampleRate * 2 * numOfChan);
+            setUint16(numOfChan * 2); setUint16(16); setUint32(0x61746164); setUint32(length - pos - 4);
+            for (i = 0; i < abuffer.numberOfChannels; i++) channels.push(abuffer.getChannelData(i));
+            while (pos < length) {
+                for (i = 0; i < numOfChan; i++) {
+                    sample = Math.max(-1, Math.min(1, channels[i][offset]));
+                    sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
+                    view.setInt16(pos, sample, true); pos += 2;
+                }
+                offset++;
+            }
+            return new Blob([buffer], { type: "audio/wav" });
+            function setUint16(data) { view.setUint16(pos, data, true); pos += 2; }
+            function setUint32(data) { view.setUint32(pos, data, true); pos += 4; }
+        }
+    </script>
+</body>
+</html>
+
